@@ -22,14 +22,14 @@ Screenshot
 Saves a copy of the current waveform graph to a file.
 
 
-Load Plot
-
-Loads a plot data file into the program. The waveform plot and capture parameters are displayed.
-
-
 Save Plot
 
 Saves the plot currently being displayed to a file. The plot is stored in the form of the RAW oscilloscope data.
+
+
+Load Plot
+
+Loads a plot data file into the program. The waveform plot and capture parameters are displayed.
 
 
 Exit
