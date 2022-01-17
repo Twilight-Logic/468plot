@@ -7,8 +7,7 @@ The program connects to the Tektronix 468 over GPIB. Cuttently it interfaces wit
 
 Serial and GPIB parameters are configured in the 468plot.conf file.
 
-<img src="screenshot.png"></img>
-
+[!screenshot](screenshot.png)
 
 Brief description of functions:
 
