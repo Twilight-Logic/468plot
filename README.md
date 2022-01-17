@@ -7,7 +7,7 @@ The program connects to the Tektronix 468 over GPIB. Cuttently it interfaces wit
 
 Serial and GPIB parameters are configured in the 468plot.conf file.
 
-![screenshot](https://github.com/Twilight-Logic/468plot.git/blob/screenshot.png?raw=true)
+![screenshot](https://github.com/Twilight-Logic/468plot/blob/main/Screenshot.png)
 
 Brief description of functions:
 
