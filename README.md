@@ -12,26 +12,26 @@ Serial and GPIB parameters are configured in the 468plot.conf file.
 Brief description of functions:
 
 
-Capture
+<i>Capture</i>
 
 Captures the display from the Tektronix 468 oscilloscope. The oscilloscope must be set in storage mode by pressing the NORM button. The oscilloscope GPIB address must be set in 468plot.conf. The oscilloscope GPIB interface configuration is set using DIP switches at the rear of the oscilloscope and must be set in controller mode.
 
 
-Screenshot
+<i>Screenshot</i>
 
 Saves a copy of the current waveform graph to a file.
 
 
-Save Plot
+<i>Save Plot</i>
 
 Saves the plot currently being displayed to a file. The plot is stored in the form of the RAW oscilloscope data.
 
 
-Load Plot
+<i>Load Plot</i>
 
 Loads a plot data file into the program. The waveform plot and capture parameters are displayed.
 
 
-Exit
+<i>Exit</i>
 
 Quit the program.
