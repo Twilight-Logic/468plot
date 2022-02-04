@@ -58,9 +58,11 @@ The <i>forcedtr</i> setting invokes a piece of code that forcibly sets DTR and i
 
 To operate in controler mode, set oscilloscope GPIB address using the DIP switches next to the controller port and set switch 8 to controller mode. In the 468plot.conf file set the mode to 'ctr', and set the GPIB address of the oscilloscope:
 
+<pre>
 [GPIB]
 mode = ctr
 addr = 17
+</pre>
 
 When the <i>Capture</I> button is clicked, the program will connect to the serial interface and establish a connection with the GPIB interface. The interface will be configured for controller mode and the address of the instrument set in the 468plot.conf file, or the default address 1. If the serial port is already open, then this step will be skipped. A read command will then be sent to the oscilloscope which will trigger a capture of the waveform currently on screen. The waveform data is then sent over GPIB to the 468plot program. After a couple of seconds, the waveform and channel data should be displayed in the application window.
 
@@ -69,8 +71,10 @@ When the <i>Capture</I> button is clicked, the program will connect to the seria
 
 When the oscilloscope is set in talk-only (TON) mode, the interface must be configured for listen-only mode (LON). In this mode, no addressing is required. In the 468plot.conf file, set the mode to 'lon'
 
+<pre>
 [GPIB]
 mode = lon
+</pre>
 
 When the <i>Capture</I> button is clicked, the program will connect to the serial interface and establish a connection with the GPIB interface. The interface will be configured for device mode and listen only mode will be enabled. After a couple of seconds, the prompt to 'Press TRANSMIT....' should appear in the left side text window. The program is now ready to receive data. Pressing the 'Transmit' button on the oscilloscope will trigger a capture of the waveform currently on screen and send the waveform data to the 468plot program. After a couple of seconds, the waveform and channel data should be displayed in the application window.
 
