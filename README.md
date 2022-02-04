@@ -69,7 +69,7 @@ When the <i>Capture</I> button is clicked, the program will connect to the seria
 
 <i>Tektronix 468 Talk Only mode</i>
 
-When the oscilloscope is set in talk-only (TON) mode, the interface must be configured for listen-only mode (LON). In this mode, no addressing is required. In the 468plot.conf file, set the mode to 'lon'
+When the oscilloscope is set in talk-only (TON) mode, the interface must be configured for listen-only mode (LON). In this mode, no addressing is required. In the 468plot.conf file, set the mode to 'lon':
 
 <pre>
 [GPIB]
