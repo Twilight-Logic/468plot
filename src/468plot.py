@@ -1,12 +1,11 @@
 #!/usr/bin/python3
 
 # Tektronix 468 oscilloscope plot decoder
-# Version 0.01.17 
-# Twilight Logix, @16/01/2022
+Version = "0.01.21" 
+# Twilight Logix, @04/02/2022
 # Dependencies:
 # matplotlib, numpy
-# matplotlib, numpy
-# Also uses: Tkinter, pyserial
+# Also uses: configparser, Tkinter, pyserial, time and termios
 
 
 import configparser
@@ -15,6 +14,9 @@ import time
 import tkinter as tk
 import matplotlib.pyplot as plt
 import numpy as np
+import termios
+
+#import asyncio
 
 from tkinter import filedialog
 from tkinter import messagebox
@@ -33,7 +35,7 @@ def main():
   global window, fig, ax
   lab_title = tk.Label(master=window, text="Tektronix 468 Storage Oscilloscope Waveform Capture", font=("Helvetica", 18) )
   lab_title.place(x=220, y=20)
-  lab_credit = tk.Label(master=window, text="(c) Twilight Logic, 14/10/2022, version 0.01.17")
+  lab_credit = tk.Label(master=window, text="(c) Twilight Logic, 14/10/2022, version " + Version)
   lab_credit.place(x=360, y=50)
 
   fig.patch.set_facecolor('PaleGreen')
@@ -204,7 +206,7 @@ def drawPlot(plotdataset):
 
         # Plot data
         h, = ax.plot(x, yarray)
-        h.set_label(plotdataset['plots'][0]['channel'])
+        h.set_label(plotdataset['plots'][i]['channel'])
 
     if len(plotdataset['plots']) == 1:
       ax.legend(bbox_to_anchor=(0.60, -0.02), ncol=2)
@@ -253,10 +255,23 @@ def capture_click(canvas, databox):
   global plotdataset
   global fig, ax
   global rawplotdata
-  gpibPlotData = gpibFetchPlotData()
-  if (gpibPlotData):
-    rawplotdata = gpibPlotData
-    redraw_plot(canvas, databox, gpibPlotData)
+  global cfg
+
+  if cfg['GPIB']['mode'] == "ctr" :
+    gpibPlotData = gpibFetchPlotData(databox)
+    if ( gpibPlotData and (len(gpibPlotData)>256) ):
+      rawplotdata = gpibPlotData
+      redraw_plot(canvas, databox, gpibPlotData)
+
+  if cfg['GPIB']['mode'] == "lon" :
+#    loop = asyncio.get_event_loop()
+#    coroutine = gpibListenForPlotData(canvas, databox)
+#    loop.run_until_complete(coroutine)
+#    asyncio.run(gpibListenForPlotData(canvas, databox))
+    gpibListenForPlotData(canvas, databox)
+#    if (ser_connected):
+#      asyncio.run(waitForPlotData(canvas, databox))
+    waitForPlotData(canvas, databox)
 
 
 def load_click(canvas, databox):
@@ -397,12 +412,6 @@ def getPlotData(GPIBdata, plotdataset):
     pdcnt += 1
   decodeID(devidstr, plotdataset)
 
-#  print("Read ID")
-
-#  print("PdCnt: " + str(pdcnt))
-#  print("PdLen: " + str(pdlen))
-
-
   # Read the parameters string
   while (pdcnt < pdlen):
     if (chr(GPIBdata[pdcnt]) != "%"):
@@ -417,26 +426,14 @@ def getPlotData(GPIBdata, plotdataset):
         plotdata.append(GPIBdata[pdcnt])
       decodePlotData(plotdata, plot)
 
-#      print("Read plot data " + str(pcnt))
-#      print(plot)
-
       plots.append(plot)
 
       params = ""
       pcnt += 1
 
     pdcnt += 1
-
- 
-#  print("Read all plot data.")
-
-#  print("ALL plots: ")
-#  print(plots)
-#  print("END")
   
   plotdataset['plots'] = plots
-
-#  print("END of read")
 
 
 def updateDataBox(databox, plotmeta):
@@ -481,7 +478,7 @@ def printPlotData(plot):
     print("Channel:        " + plot['plots'][i]['channel'])  # CH1, CH2, ADD
     print("Coupling:       " + plot['plots'][i]['coupling']) # AC, DC, GND, UNK
     print("Plot points:    " + plot['plots'][i]['NR.PT'])    # 256/512
-    print("Point format:   " + plot['plots'][i]['PT.FMT'])   # Y = y-coord transmitted, X = data point number
+    print("Point format:   " + plot['plots'][i]['PT.Fasync def async_func():MT'])   # Y = y-coord transmitted, X = data point number
     print("X increment:    " + plot['plots'][i]['XINCR'])    # increment x units = time between points
     print("X origin:       " + plot['plots'][i]['XZERO'])    # X origin = zero
     print("Point offset:   " + plot['plots'][i]['PT.OFF'])   # Trigger point 32, 64, 224, 448
@@ -502,72 +499,186 @@ def printPlotData(plot):
 #    print(plot['plots'][i]['pdata'])
 
 
-def gpibFetchPlotData():
+def connectSerial():
   global cfg
-  addrcmd = ""
+  global ser
 
-  print("Opening serial port...")
+  if ser.is_open:
+    return True
+  else:
+    # Try to open the configured port
+    if "port" in cfg['Serial']:
+      ser.port = cfg['Serial']['port']
+    if "baud" in cfg['Serial']:
+      ser.baudrate = int(cfg['Serial']['baud'])
+    if "timeout" in cfg['Serial']:
+      ser.timeout = float(cfg['Serial']['timeout'])
+    if "forcedtr" in cfg['Serial']:
+      dtr = int(cfg['Serial']['forcedtr'])
+    if (dtr):
+      try:
+        # Force DTR
+        f = open(ser.port)
+        attrs = termios.tcgetattr(f)
+        attrs[2] = attrs[2] & ~termios.HUPCL
+        termios.tcsetattr(f, termios.TCSAFLUSH, attrs)
+        f.close()
+        # Open port
+        ser.open()
+        return ser.is_open
+      except:
+        return False
+    else:
+      try:
+        # Just open port
+        ser.open()
+        return ser.is_open
+      except:
+        return False
 
-  # Configure and open serial port
-  ser = serial.Serial()
-  ser.port = cfg['Serial']['port']
-  ser.baudrate = int(cfg['Serial']['baud'])
-  ser.timeout = float(cfg['Serial']['timeout'])
-  ser.open()
-
-  if (ser.is_open):
-    ser.write(b'++ver\n')
-    version = ser.readline().decode()
-    if "GPIB-USB" in version:
-      print(version)
-
-#      print("Configuring GPIB...")
-      time.sleep(0.2)
-      # Set up GPIB interface
-      ser.write(b'++mode 1\n')
-#      print(str(cfg['GPIB']['addr']))#gpibPlotData = gpibFetchPlotData()
-      addrcmd = "++addr " + str(cfg['GPIB']['addr']) + "\n"
-      ser.write(addrcmd.encode())
+  # All other possibilities
+  return False
 
 
-#      print("Sending ++mode...")
-#      ser.write(b'++mode\n')
+def verifyPrologix(databox):
+  sendGpibCmd("++ver\n")
+  # Get the version string
+  version = readResult()
+  # If no result then give it another try
+  if not (version):
+    version = readResult()
+  if (version):
+    if any (x in version for x in {"GPIB-USB", "AR488"}):
+      return True
+    else:
+      databox.insert(tk.END, "Unidentified interface!\n")
+      return False
+  else:
+    databox.insert(tk.END, "GPIB interface not found!\n")
+    return False
 
-#      print("Reading reply...")
-#      mode = ser.readline().decode()
-#      print ("Mode: " + mode)
 
-#      print("Sending ++addr...")
-#      ser.write(b'++addr\n')
+def sendGpibCmd(cmd):
+  global cfg
+  if ('forcedtr' in cfg['Serial']) :
+    dtr = cfg['Serial']['forcedtr']
+#  print("Sending " + cmd + "....")
+  ser.write(cmd.encode())
+  if (dtr):
+    time.sleep(0.2)
 
-#      print("Reading reply...")
-#      addr = ser.readline().decode()
-#      print("Addr: " + addr)
 
-      print("Fetching plot data...")
-      time.sleep(0.2)
+def readResult():
+  global cfg
+  if ('forcedtr' in cfg['Serial']) :
+    dtr = cfg['Serial']['forcedtr']
+  result = ser.readline().decode()
+  if (dtr):
+    time.sleep(0.2)
+  return result
 
-      # Read scope data
-      plotdata = bytearray()
-      ser.write(b'++read\n')
-      bytesToRead = 0
 
+def readPlotData():
+  plotdata = bytearray()
+  ser.write(b'++read\n')
+  byte = ser.read(1)
+  while ( byte != b"" ) :
+    plotdata += byte
+    byte = ser.read(1)
+  return plotdata
+
+
+def waitForPlotData(canvas, databox):
+  global ser
+  plotdata = bytearray()
+
+  while True:
+    byte = ser.read(1)
+    # Now read the rest of the data
+    ser.timeout = 0.5
+    while ( byte != b"" ) :
+      plotdata += byte
       byte = ser.read(1)
-      while ( byte != b"" ) :
-        plotdata += byte
-        byte = ser.read(1)
-
+    if (len(plotdata)>256):
 #      print(plotdata)
+      rawplotdata = plotdata
+      redraw_plot(canvas, databox, plotdata)
+      return
 
-      ser.close()
-      return plotdata
+
+def gpibListenForPlotData(canvas, databox):
+  global ser
+  global cfg
+
+  global ser_connected
+
+  databox.delete("1.0", tk.END)
+
+  if connectSerial():
+    if verifyPrologix(databox):
+
+      sendGpibCmd("++mode 0\n")
+      sendGpibCmd("++lon 1\n")
+
+#      sendGpibCmd("++mode\n")
+#      mode = readResult()
+#      databox.insert(tk.END, "Mode: " + mode + "\n")
+
+#      sendGpibCmd("++lon\n")
+#      lon = readResult()
+#      databox.insert(tk.END, "LON: " + lon + "\n")
+
+      databox.insert(tk.END, "Press TRANSMIT....\n")
+      ser_waiting = True
+
+      # Wait for textbox to be updated
+      while True:
+        tb = databox.get("1.0", tk.END)
+        last = tb[-7:]
+        if "...." in last:
+          databox.update()
+          break
 
     else:
-      print("GPIB interface not found!")
+      databox.insert(tk.END, "GPIB interface not found!\n")
       ser.close()
 
   else:
-    print("Failed to open the serial port!")
+    databox.insert(tk.END, "Error opening serial port!\n")
+
+
+
+
+def gpibFetchPlotData(databox):
+  global cfg
+  global ser
+  addrcmd = ""
+
+  databox.delete("1.0", tk.END)
+
+  databox.insert(tk.END, "Opening serial port...\n")
+  if connectSerial():
+    if verifyPrologix(databox):
+
+      # Setup the inerface
+      sendGpibCmd("++mode 1\n")
+      addrcmd = "++addr " + str(cfg['GPIB']['addr']) + "\n"
+      sendGpibCmd(addrcmd)
+
+      # read the plot data
+      plotdata = readPlotData()
+
+      # Close the serial port
+      ser.close()
+
+      return plotdata
+
+    else:
+      databox.insert(tk.END, "GPIB interface not found!\n")
+      ser.close()
+
+  else:
+    databox.insert(tk.END, "Error opening serial port!\n")
 
   return None
 
@@ -576,7 +687,9 @@ def setDefaultSerialConfig(cfg):
   cfg['Serial']['port']  = '/dev/ttyUSB0'
   cfg['Serial']['baud'] = 9600
   cfg['Serial']['timeout'] = 0
+  cfg['Serial']['forcedtr'] = 0
   cfg['GPIB']['addr'] = 1
+  cfg['GPIB']['mode'] = "ctr"
 
 
 def readConfigFile(config, cfg):
@@ -589,8 +702,13 @@ def readConfigFile(config, cfg):
       cfg['Serial']['baud'] = config['Serial']['baud']
     if ('timeout' in config['Serial']) :
       cfg['Serial']['timeout'] = config['Serial']['timeout']
+    if ('forcedtr' in config['Serial']) :
+      cfg['Serial']['forcedtr'] = config['Serial']['forcedtr']
+
 
     # GPIB configuration
+    if ('mode' in config['GPIB']) :
+      cfg['GPIB']['mode'] = config['GPIB']['mode']
     if ('addr' in config['GPIB']) :
       cfg['GPIB']['addr'] = config['GPIB']['addr']
   except:
@@ -606,6 +724,9 @@ window.geometry("1024x650")
 # Plot window
 fig, ax = plt.subplots()
 
+# Define serial port
+ser = serial.Serial()
+ser_connected = False
 
 # Configuration reader object
 config = configparser.ConfigParser()
@@ -625,7 +746,7 @@ main()
 
 
 
-#plotfile = "Tek768.dat"
+#plotfile = "468out-test-03.dat"
 
 #plotfile = "sample1-wave.dat"
 #plotfile = "sample2-am.dat"
@@ -654,6 +775,7 @@ main()
 #  printPlotData(plotdataset)
 #  drawPlot(plotdataset)
 
+ser.close()
 fig.close()
 window.close()
 
